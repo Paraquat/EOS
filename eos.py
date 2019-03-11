@@ -195,12 +195,12 @@ for eos_i in eos_list:
         print("curve_fit failed")
         sys.exit(0)
 
-    efit = vinet(v_fine, *popt)
-    pfit_e = p_vinet(v_fine, *popt)
+    efit = vinet(eos_i.fine_grid, *popt)
+    pfit_e = p_vinet(eos_i.fine_grid, *popt)
     eos_i.add_fit(efit, pfit_e)
     if cliopts.zpe:
-      ffit = vinet(v_fine, *popt2)
-      pfit_f = p_vinet(v_fine, *popt2)
+      ffit = vinet(eos_i.fine_grid, *popt2)
+      pfit_f = p_vinet(eos_i.fine_grid, *popt2)
       eos_i.add_fit_zpe(ffit, pfit_f)
 
   elif cliopts.quartic:
@@ -208,24 +208,24 @@ for eos_i in eos_list:
     c0, d0, e0 = scipy.polyfit(volumes, energies, 2)
     init_guess = scipy.array([0., 0., c0, d0, e0])
     popt, pcov = curve_fit(quartic, eos_i.volume, eos_i.energy, p0=init_guess, maxfev=10000)
-    efit = quartic(v_fine, *popt)
-    pfit_e = p_quartic(v_fine, *popt)
+    efit = quartic(eos_i.fine_grid, *popt)
+    pfit_e = p_quartic(eos_i.fine_grid, *popt)
     eos_i.add_fit(efit, pfit_e)
     if cliopts.zpe:
       popt2, pcov2 = curve_fit(quartic, volumes, helmholtz, p0=popt, maxfev=10000)
-      ffit = quartic(v_fine, *popt2)
-      pfit_f = p_quartic(v_fine, *popt2)
+      ffit = quartic(eos_i.fine_grid, *popt2)
+      pfit_f = p_quartic(eos_i.fine_grid, *popt2)
       eos_i.add_fit_zpe(ffit, pfit_f)
   elif cliopts.birchmfit:
     print("Fit to Birch-Murnaghan equation of state")
     popt, pcov = curve_fit(birchm, eos_i.volume, eos_i.energy, p0=init_guess, maxfev=10000)
-    efit = birchm(v_fine, *popt)
-    pfit_e = p_birchm(v_fine, *popt)
+    efit = birchm(eos_i.fine_grid, *popt)
+    pfit_e = p_birchm(eos_i.fine_grid, *popt)
     eos_i.add_fit(efit, pfit_e)
     if cliopts.zpe:
       popt2, pcov2 = curve_fit(birchm, volumes, helmholtz, p0=popt, maxfev=10000)
-      ffit = birchm(v_fine, *popt2)
-      pfit_f = p_birchm(v_fine, *popt2)
+      ffit = birchm(eos_i.fine_grid, *popt2)
+      pfit_f = p_birchm(eos_i.fine_grid, *popt2)
       eos_i.add_fit_zpe(ffit, pfit_f)
 
   print(eos_i.label)
@@ -247,7 +247,7 @@ for eos_i in eos_list:
 # Calculate position of line at target pressure
   if not cliopts.press == None:
     pfit_e_gpa = pfit_e*eva32gpa
-    fpe = interp1d(pfit_e_gpa, v_fine, kind='cubic')
+    fpe = interp1d(pfit_e_gpa, eos_i.fine_grid, kind='cubic')
     v_target_e = fpe(target_pressure)
     eos_i.add_target(target_pressure, v_target_e)
     pve = target_pressure * v_target_e / eva32gpa
@@ -255,7 +255,7 @@ for eos_i in eos_list:
 
     if cliopts.zpe:
       pfit_f_gpa = pfit_f*eva32gpa
-      fpe = interp1d(pfit_f_gpa, v_fine, kind='cubic')
+      fpe = interp1d(pfit_f_gpa, eos_i.fine_grid, kind='cubic')
       v_target_f = fpe(target_pressure)
       eos_e.add_target_zpe(target_pressure, v_target_f)
       pvf = target_pressure * v_target_f / eva32gpa
@@ -266,6 +266,7 @@ for eos_i in eos_list:
 
 # Plot graphs
 plt.ioff()
+plt.figure(figsize=(8,10))
 ax1 = plt.subplot(211)
 plt.ylabel('E (eV)')
 plt.setp(ax1.get_xticklabels(), visible=False)
@@ -287,13 +288,11 @@ for e in eos_list:
 plt.legend(loc='lower left')
 
 ax2 = plt.subplot(212, sharex=ax1)
-#l1 = 'Static:     P = {target_pressure:>6.2f}, V = {1:>8.4f}'.format(pfit_e[i_target], v_fine[i_target])
 plt.xlabel(r'V ($\AA ^3$)')
 plt.ylabel('P (GPa)')
 for e in eos_list:
   plt.plot(e.fine_grid, e.p_fit*eva32gpa, linestyle='-')
   if cliopts.zpe:
-#    l2 = 'Vibrations: P = {0:>6.2f}, V = {1:>8.4f}'.format(pfit_f[i_target_f], v_fine[i_target_f])
     plt.plot(e.fine_grid, e.p_fit_zpe, linestyle='-')
 
 ax2.autoscale(False)
@@ -307,6 +306,5 @@ if not cliopts.press == None:
 
 plt.legend(loc='lower left')
 plt.xlim(minv,maxv)
-#plt.ylim(ymin=0)
 plt.tight_layout()
 plt.savefig('eos.pdf', bbox_inches='tight')
