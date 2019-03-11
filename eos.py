@@ -43,6 +43,7 @@ class eos:
 parser = argparse.ArgumentParser(description='Plot equation of state with and without zero-point energy correction', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('-p', '--pressure', action='store', dest='press', default=None)
 parser.add_argument('-i', '--infile', action='store', nargs='+', dest='infile', default=['eos.dat',], help='File containing volume/energy/ZPE data')
+parser.add_argument('-o', '--outfile', action='store', dest='pdffile', default='eos.pdf', help='pdf containing equation of state plot')
 parser.add_argument('-V0', action='store', dest='V0', default=0.0)
 parser.add_argument('-E0', action='store', dest='E0', default=0.0)
 parser.add_argument('-B0', action='store', dest='B0', default=1.0)
@@ -307,4 +308,4 @@ if not cliopts.press == None:
 plt.legend(loc='lower left')
 plt.xlim(minv,maxv)
 plt.tight_layout()
-plt.savefig('eos.pdf', bbox_inches='tight')
+plt.savefig(cliopts.pdffile, bbox_inches='tight')
