@@ -10,12 +10,23 @@ from pdb import set_trace
 import warnings
 warnings.filterwarnings("ignore")
 
+unit_vol = 1.0E-30
+unit_ev = 1.60217653E-19
+unit_giga = 1.0E9
+eva32gpa = 160.21766208
+habo32gpa = 29421.02648438959
+ha2ev = 27.2113860217
+bohr2ang = 0.529177249
+const = unit_ev/unit_vol/unit_giga
+
 class eos:
 
   def __init__(self, label, volume, energy):
     self.label = label
     self.volume = volume
     self.energy = energy
+    self.f_fit = None
+    self.p_fit_zpe = None
 
   def add_zpe(self, zpe):
     self.zpe = zpe
@@ -23,6 +34,7 @@ class eos:
 
   def add_fine_grid(self, fine_grid):
     self.fine_grid = fine_grid
+    self.ngrids = len(fine_grid)
 
   def add_fit(self, e_fit, p_fit):
     self.e_fit = e_fit
@@ -40,6 +52,20 @@ class eos:
     self.target_p_zpe = p
     self.target_v_zpe = v
 
+  def dump(self, fname="interpolated_data.dat"):
+    if self.f_fit:
+      fmt = "{0:<16.8e}{1:<16.8e}{2:<16.8e}{3:<16.8e}{4:<16.8e}\n"
+    else:
+      fmt = "{0:<16.8e}{1:<16.8e}{2:<16.8e}\n"
+    with open(fname, 'w') as outfile:
+      for i in range(self.ngrids):
+        if self.f_fit:
+          outfile.write(fmt.format(self.fine_grid[i], self.e_fit[i], self.p_fit[i]*eva32gpa,
+                        self.f_fit[i], self.p_fit_zpe[i]*eva32gpa))
+        else:
+          outfile.write(fmt.format(self.fine_grid[i], self.e_fit[i], self.p_fit[i]*eva32gpa))
+
+
 parser = argparse.ArgumentParser(description='Plot equation of state with and without zero-point energy correction', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('-p', '--pressure', action='store', dest='press', default=None)
 parser.add_argument('-i', '--infile', action='store', nargs='+', dest='infile', default=['eos.dat',], help='File containing volume/energy/ZPE data')
@@ -55,25 +81,17 @@ parser.add_argument('--zpe', action='store_true', dest='zpe', help='zero point e
 parser.add_argument('--au', action='store_true', dest='au', help='data in atomic units')
 parser.add_argument('--ry', action='store_true', dest='ry', help='energy in Rydbergs')
 parser.add_argument('-v', '--volumes', action='store', nargs='+', dest='target_v', default=None, help='Compute E and P at these volumes')
+parser.add_argument('-d', '--dump', action='store_true', dest='dump', help='Dump fine grid data')
 cliopts = parser.parse_args()
 
 if len(sys.argv) == 1:
   parser.print_help()
   sys.exit(0)
 
-unit_vol = 1.0E-30
-unit_ev = 1.60217653E-19
-unit_giga = 1.0E9
-eva32gpa = 160.21766208
-habo32gpa = 29421.02648438959
-ha2ev = 27.2113860217
-bohr2ang = 0.529177249
-const = unit_ev/unit_vol/unit_giga
-
 tableheader = '{0: <16s}{1: <16s}{2: <16s}'
 tablefmt = '{0: <16.6f}{1: <16.6f}{2:< 16.6f}'
 
-npoints_fine = 100000
+npoints_fine = 1000
 target_volume = None
 if not cliopts.press == None:
   target_pressure = float(cliopts.press)
@@ -83,6 +101,7 @@ if not cliopts.target_v == None:
 
 unit_enconv = 1.0
 unit_lconv = 1.0
+unit_vconv = 1.0
 if cliopts.au:
   unit_enconv = ha2ev
   unit_lconv = bohr2ang
@@ -279,9 +298,11 @@ for e in eos_list:
   if cliopts.zpe:
     plt.plot(e.volume, e.helmholtz, 'ko', markerfacecolor='None', markeredgewidth=1.5)
     plt.plot(e.fine_grid, e.f_fit, linestyle='-', label=e.label)
+  if cliopts.dump:
+    e.dump()
 
 ax1.autoscale(False)
-plt.gca().set_color_cycle(None)
+plt.gca().set_prop_cycle(None)
 for e in eos_list:
   if not cliopts.press == None:
     # plot a line for the target pressure
@@ -297,7 +318,7 @@ for e in eos_list:
     plt.plot(e.fine_grid, e.p_fit_zpe, linestyle='-')
 
 ax2.autoscale(False)
-plt.gca().set_color_cycle(None)
+plt.gca().set_prop_cycle(None)
 
 if not cliopts.press == None:
   for e in eos_list:
